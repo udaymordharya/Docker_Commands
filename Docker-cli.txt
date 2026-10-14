@@ -1,0 +1,265 @@
+docker (cli- commands) new version
+docker --help //for different modules availble contains parent module and child module
+docker container run ubuntu //for create container of ubuntu 
+docker container ls <it will show list of running containers>
+docker network ls <it will show the networks>
+docker container run ubuntu(image name) <commnad that your want to run > #<if image is not available docker will download image from dockerhub and create container into your machine>
+docker container ls -a <it will show all the running and non running containers>
+docker container run fedora sleep 30 <it will show till 30 sec in running after that container will close>
+docker container rm <container id> it will remove non running container 
+docker container start <container id> it will start a stopped contianer
+docker container stop <container id> it will stop running container
+docker container run -d ubuntu sleep 30 <it will run ubuntu container and send it to background -d (detach) and not freeze the terminal)
+docker images --all <it will show the all images availble in local repo>
+docker container run -it ubuntu /bin/bash <it will allow us to access container (it interactive tty) >
+exit or cntrl+d to exit from container but the container will stop from running
+cntrl+pq to stey remain container to be in running condition in background
+(docker container ls -aq) it will show id of all containers
+docker container rm $(docker container ls -aq) it will delete all stopped containers running containers need to be stopped first
+docker container inspect <container id> it will show all the information and configuration of the contianer 
+docker container logs <contaier id of nginx server> to check logs of nginx server
+docker container top <container id> to check running processes in nginx server
+ps -aux to see all processes in your machine
+docker container stats <to see the stats of container >
++++to access nginx server from other vm or machine we need to do port forwarding+++
+docker engine 7770 pe jo bhi req aaye xyz(container):80 pe bhej de
+docker container run -d(detach) -p(port) 7770:80 --name(name of container) nginx 
+netstat -nltp <to check open ports>
+<public ip of ec2 instance:7770>
+docker container exec -it <contaier-id> /bin/bash to access the shell of container
+docker container rename <container-id> new name to rename container name
+docker container restart <container-id> to restart the container
+docker container attach <container-id> to bring our container from backgroud to foreground
+run container ip in browser it will generate logs in fg
+docker container kill <container-id> to kill container forcefully
+docker container stop <container-id> to stop container normally
+docker container wait <container-id> it will wait until container is stopped once it stopped it will show the output
+docker container pause <container-id> it will pause the container 
+docker container unpause <container-id> it will resume the container
+docker container prune it will delete all the stopped container
+docker container port <container-id> it will show the port mapping info
+============================================================================================================
+Create Command
+docker container create ubuntu sleep 30 <it will create container of ubuntu with command sleep30>
+docker create command can download image from git hub and create container but not start the container command sleep30 will not execute until manually start by us 
+docker container diff <container id> it will show the changes in file system of container ( c-create d-delete a-add )
+watch 'docker container diff <container id>' <it will watch the co ntainer every two seconds and logs the chenges in container file system
+docker container cp <source-file> <container id:/destination-file> it will allow to copy file from docker engine to any container with the help of cp cmd
+===============================================================================================================
+Docker Container Export/Import
+docker container export <container-id>pk.zip <alternate way below>
+docker container export <container-id -o pk.zip <this will export our container in tar,zip,rar format>
+ls -lh it will show the information of export file size etc
+docker image import <zipfilename> <image name> it will import the docker image
+docker image ls it will show the all docker images
+===============================================================================================================
+Create docker image from running Container
+docker container commit --author<"authorname"> -m <"your message"> <container-id> <new image name> it will create docker image from running container
+===============================================================================================================
+Docker hub
+docker pull ubuntu <it will pull ubuntu image from dockerhub>
+docker pull ubuntu:<tag or old version name> it will pull ubuntu image based on tag or old version
+docker image tag <hackeros image name> hub.docker.com/hackerboypk/<hackerbos new image name> this will set tag with our dockerhub repo
+docker push <reponame/tag> it will push your docker image to docker hub 
+docker login enter username password and login to dockerhub
+docker pull hackerboypk/hackerbos:latest it will pull image from dockerhub syntax is given in dockerhub image path
+==================================================================================================================
+Docker image commands
+docker image ls it will list all the images in local repo
+docker image ls --format '{{.ID}},{{.Repository}}' it will show in desired format listing of docker image more foramt listed on docs
+docker image history <docker image name> it will disply the history of docker image
+docker image rm <image name > will remove the images from local repo
+docker image rm -f <image name > it will remove the image forcefully from the repo
+docker image ls and docker images are equal 
+docker image inspect <image name> it will inspect the image 
+docker image prune it will remove all the unused images from the local repo
+=====================================================================================================================
+Docker image save and docker image load
+docker image save <image name> >image name.zip or .tar it will save image and standard output will save in .tar format
+docker image load > <image name.tar> it will load image from tar file
+docker image save vs docker container export
+=========================================================================================================================
+Dockerfile and layered Architecture
+vi Dockerfile <name of the file must be Dockerfile by default docker build commnad will search with name Dockerfile>
+docker image build -t <myubuntu image name>:<1 tag> . (dot) means currant working directory of dockerfile
+docker container run -it build:5 example to run build
+whenever you need to modify docker file try to modify lower side rather than upper side to save time to build
+vi Dockerfile contains the configuration of image to be build commands like run and more refer docs 
+==========================================================================================================================
+Dockerfile 
+LABEL, RUN, ENV, WORKDIR docs availble
+==========================================================================================================================
+Dockerfile
+ADD COPY USER 
+RUN useradd -d /home/pk -g root -G sudo -m -p $(echo "PASS" | openssl passwd -1 -stdin) $NAME
+this will add user in image dockerfile
+USER $NAME it will swith user according to environment variable name
+COPY <source file local> <destination image path>
+ADD <source file local> <destination image path>
+diff bet copy & add h.w
+=============================================================================================================================
+CMD start docker contaner by python shell
+in docker file add CMD ["python"]
+==============================================================================================================================
+Entrypoint
+ENTRYPOINT [""] SYNTAX of entrypoint 
+write more info about entrypoint 
+diff entrypoint vs cmd
+use case and real life scenarios R & D
+==============================================================================================================================
+Docker Volume
+volume 
+bind mount
+tmpfs ram me store karta hai hdd me nahi host machine ke
+docker container run --name<container name> -e MYSQL_ROOT_PASSWORD=<password of mysql> -d <mysql image name:tag tag is version of mysql> with password
+
+docker container run --name<container name> -e MYSQL_ALLOW_EMPTY_PASSWORD=<password of mysql> -d <mysql image name:tag tag is version of mysql> without password
+=============================================================================================================================
+docker container run -d --name pkmysql -v abc:/var/lib/mysql -e ALLOW_EMPTY_PASSWORD=true mysql 
+<this command will create abc volume and it will mount in /var/lib/mysql
+docker volume ls
+===========================================================================================================================
+docker volume create, ls, inspect,rm,prune
+docker volume create <volume name> it will create volume of perticular name
+docker volume ls it will list all available volumes
+docker volume inspect <volume name> it will inspect perticular volume
+docker volume rm <volume name> it will delete particular volume
+docker volume prune it will delete all unused volumes
+============================================================================================================================
+Docker bind mount
+docker container run -it -v /home/root/bind:/tmp/test ubuntu bash 
+it will mount all the content of bind folder to tmp/test folder inside container
+if you want to mound your current location then you can use $(pwd)
+docker container run -it -v  $(pwd):/tmp/test ubuntu bash 
+another way 
+docker container run -it --mount type=bind,source=$(pwd),target=/tmp/ ubuntu bash
+=========================================================================================================================
+Docker networking
+docker network ls
+docker network inspect
+bridge network overviw
+========================================================================================================================
+Bridge Network
+docker network create --help 
+docker network create -d<driver> bridge <name of n>w test>
+docker container run -it --network test ubuntu bash
+============================================================================================================================
+Docker network connect disconnect
+docker container connect <network name> <contianer id > it will connect particular containr to specific network
+docker container disconnect <network name> <contianer id >it will disconnect particular container from network
+========================================================================================================================
+docker network rm <network name> Remove one or more networks
+docker network prune Remove all unused networks
+
+
+connect     Connect a container to a network
+  create      Create a network
+  disconnect  Disconnect a container from a network
+  inspect     Display detailed information on one or more networks
+  ls          List networks
+  prune       Remove all unused networks
+  rm          Remove one or more network
+  ============================================================================================================================
+Docker Registry (unsecured)
+docker container run -d -p 5000:5000 --name myreg registry
+curl 127.0.0.1:5000/v2/_catalog
+{"repositories":[]} registry image contains no registry
+push images into docker registry
+docker image tag ubuntu 127.0.0.1:5000/ubuntuok
+docker image push 127.0.0.1:5000/ubuntuok
+curl localhost:5000/v2/_catalog
+if we need to download image from our local server
+docker image pull 127.0.0.1:5000/<image name> even if internet is off it will download from local repo but bydefault it download from docker.io
+docker only allow secure registry with https but in this case docker allow only registry from cidr 127.0.0.0/8 this is exception
+if you want to run on insecure registry anyway so you need to create file
+vim daemon.json
+{
+"insecure-registries" :["reposerverip:5000"]
+}
+and move file to mv daemon.json etc/docker/
+service docker restart
+=====================================================================================================================================
+Docker Registry (Secure)
+first remove all the unsecure docker repository
+cd /etc/docker/
+rm -rf daemon.json
+close repo server if running
+docker container ls
+docker container stop <container id> 
+service docker restart
+now
+mkdir certs
+openssl req -newkey rsa:4096 -nodes -sha256 -keyout certs/domain.key -x509 -days 365 -out certs/domain.crt
+enter enter in common name server's hostame you need to give = repo.docker.local enter 
+now cd certs/
+ls
+now go to cd /etc/docker
+mkdir certs.d
+cd certs.d 
+mkdir repo.docker.local:5000
+cd
+cp certs/domain.crt /etc/docker/certs.d/repo.docker.local\:5000/ca.crt
+service docker restart
+to run registry type this command
+docker container run -d -p 5000:5000 --name secure_registry -v $(pwd)/certs/:/certs -e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt -e REGISTRY_HTTP_TLS_KEY=/certs/domain.key registry
+enter
+container running now
+push any image on server
+docker image ls
+docker image tag mariadb repo.docker.local:5000/mariadb_local
+docker image push repo.docker.local:5000/mariadb_local
+but its not resolving name repo.docker.local no such host
+now
+ifconfig <public ip>
+vim /etc/hosts
+add line
+<ip> repo.docker.local save and quit :wq
+now run the command docker image push repo.docker.local:5000/mariadb_local
+now its working pushing the image
+===================================================================================================================================================================
+Basic Registry authentication Docker Registry with auth
+mkdir auth
+docker container run --entrypoint htpasswd registry -bnB pawan pass123 >auth/htpasswd
+-b run in batch mode
+n output will be displayed
+B bcrypt 
+pawan username
+pass123 password
+cat auth/htpasswd
+username : encrypted passsword
+now run a container
+docker container run -d \ -p 5000:5000 \ --name registry_basic \ -v "$(pwd)" /auth:/auth \ -v "$(pwd)" /certs:/certs \ 
+-e "REGISTRY_AUTH=HTPASSWD" \ -e "REGISTRY_AUTH_HTPASSWD_REALM=Registry Realm" \
+-e REGISTRY_AUTH_HTPASSWD_PATH=/auth/htpasswd \
+-e REGISTRY_HTTP_TLS_CERTIFICATE=/certs/domain.crt \
+-e REGISTRY_HTTP_TLS_KEY=/certs/domain.key \
+registry
+enter now container will run
+docker container ls
+docker image ls
+docker image push repo.docker.local:5000/mariadb_local
+it will give error that no basic auth credentials
+docker login repo.docker.local:5000
+username:- pawan
+password :- pass123
+login success
+docker image push repo.docker.local:5000/mariadb_local
+push success
+===============================================================================================================================================================
+assignment 35 compleated 
+
+
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
