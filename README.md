@@ -487,3 +487,399 @@ Share       docker login -> docker image tag -> docker push
 Persist     -v volume:/path  or  -v $(pwd):/path
 Network     docker network create -d bridge test
 ```
+
+# Docker Compose Notes
+
+Simple, topic-wise explanation of Docker Compose and every command you will use with it.
+
+---
+
+## 1. What is Docker Compose?
+
+Running a real app usually needs many containers (web server, database, cache). Starting each one with a long `docker container run ...` command is slow and easy to get wrong.
+
+**Docker Compose** lets you describe all containers, networks and volumes in **one YAML file** and then start or stop everything with **one command**.
+
+- Config file name: `compose.yaml` (also accepted: `compose.yml`, `docker-compose.yml`, `docker-compose.yaml`).
+- New style (Compose v2, built into Docker): `docker compose ...` (with a space).
+- Old style (Compose v1, separate tool): `docker-compose ...` (with a hyphen). It is retired, so use the new style. The commands below work the same in both.
+
+| Command | What it does |
+|---|---|
+| `docker compose version` | Shows the installed Compose version (also confirms it is installed). |
+| `docker compose --help` | Lists all Compose commands. |
+
+---
+
+## 2. Compose File Structure
+
+```yaml
+services:        # list of containers
+  web:
+    image: nginx
+  db:
+    image: mysql
+
+volumes:         # named volumes (optional)
+networks:        # custom networks (optional)
+```
+
+- `services`: each entry becomes a container.
+- `volumes` and `networks`: declared at the top level, then used inside services.
+- YAML uses **spaces for indentation** (never tabs).
+
+### Common keys inside a service
+
+| Key | Meaning | Docker CLI equivalent |
+|---|---|---|
+| `image` | Image to use | the image name in `docker run` |
+| `build` | Build the image from a Dockerfile | `docker image build` |
+| `container_name` | Fixed container name | `--name` |
+| `ports` | Port mapping `"host:container"` | `-p` |
+| `environment` | Environment variables | `-e` |
+| `env_file` | Load variables from a file | `--env-file` |
+| `volumes` | Volume or bind mount | `-v` |
+| `networks` | Networks to join | `--network` |
+| `depends_on` | Start order between services | none |
+| `restart` | Restart policy (`no`, `always`, `on-failure`, `unless-stopped`) | `--restart` |
+| `command` | Override the default CMD | command at the end of `docker run` |
+| `healthcheck` | Test whether the service is healthy | `--health-cmd` |
+
+---
+
+## 3. Example: Web App + Database
+
+`compose.yaml`
+
+```yaml
+services:
+  web:
+    image: nginx
+    container_name: myweb
+    ports:
+      - "7770:80"
+    volumes:
+      - ./html:/usr/share/nginx/html   # bind mount
+    networks:
+      - appnet
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8
+    container_name: mydb
+    environment:
+      MYSQL_ROOT_PASSWORD: mypass
+      MYSQL_DATABASE: appdb
+    volumes:
+      - dbdata:/var/lib/mysql          # named volume
+    networks:
+      - appnet
+    restart: unless-stopped
+
+volumes:
+  dbdata:
+
+networks:
+  appnet:
+```
+
+What this does:
+- Creates two containers, `web` and `db`.
+- Both join the `appnet` network, so `web` can reach the database at the hostname `db`.
+- Database files are stored in the `dbdata` volume, so data survives container removal.
+- Port 7770 on the host goes to port 80 in the `web` container.
+
+Run it with `docker compose up -d` (next section).
+
+---
+
+## 4. Starting and Stopping the Whole App
+
+Run these in the folder that contains `compose.yaml`.
+
+| Command | What it does |
+|---|---|
+| `docker compose up` | Creates (and builds if needed) all networks, volumes and containers, then starts them. Shows logs in the foreground. |
+| `docker compose up -d` | Same, but in the background (detached). |
+| `docker compose up --build` | Rebuilds images before starting. |
+| `docker compose up -d --scale web=3` | Starts 3 copies of the `web` service. (Do not use a fixed `container_name` or fixed host port with scaling.) |
+| `docker compose down` | Stops and **removes** containers and networks. Volumes are kept. |
+| `docker compose down -v` | Same, and also removes the named volumes (**deletes data**). |
+| `docker compose down --rmi all` | Same, and also removes the images used. |
+| `docker compose stop` | Stops containers but does **not** remove them. |
+| `docker compose start` | Starts stopped containers again. |
+| `docker compose restart` | Restarts all (or given) services. |
+| `docker compose pause` | Freezes all containers. |
+| `docker compose unpause` | Resumes paused containers. |
+| `docker compose kill` | Forcefully stops containers. |
+| `docker compose rm` | Removes stopped containers. |
+
+You can limit most commands to one service, for example `docker compose restart web`.
+
+---
+
+## 5. Checking Status and Logs
+
+| Command | What it does |
+|---|---|
+| `docker compose ps` | Lists containers of this Compose project and their state. |
+| `docker compose ps -a` | Includes stopped containers. |
+| `docker compose logs` | Shows logs of all services. |
+| `docker compose logs -f` | Follows logs live (like `tail -f`). |
+| `docker compose logs web` | Shows logs of only the `web` service. |
+| `docker compose top` | Shows running processes in each container. |
+| `docker compose images` | Lists images used by the services. |
+| `docker compose port web 80` | Shows which host port is mapped to port 80 of `web`. |
+| `docker compose events` | Streams live events from the containers. |
+| `docker compose ls` | Lists all Compose projects running on the machine. |
+
+---
+
+## 6. Working Inside Containers
+
+| Command | What it does |
+|---|---|
+| `docker compose exec web bash` | Opens a shell inside the **running** `web` container. |
+| `docker compose exec db mysql -u root -p` | Runs a command in a running container (here, the MySQL client). |
+| `docker compose run web ls /` | Starts a **new one-off** container for the `web` service and runs a command in it. |
+| `docker compose run --rm web bash` | Same, and removes the container when you exit. |
+| `docker compose cp ./file.txt web:/tmp/` | Copies a file from host into a service's container (reverse also works). |
+
+`exec` = use an existing running container. `run` = start a fresh container.
+
+---
+
+## 7. Building and Pulling Images
+
+If a service uses `build`, Compose builds the image from your Dockerfile.
+
+```yaml
+services:
+  app:
+    build: .                 # Dockerfile in the current folder
+    ports:
+      - "5000:5000"
+```
+
+Or with more options:
+
+```yaml
+services:
+  app:
+    build:
+      context: ./app
+      dockerfile: Dockerfile.dev
+```
+
+| Command | What it does |
+|---|---|
+| `docker compose build` | Builds (or rebuilds) images for services that have `build`. |
+| `docker compose build --no-cache` | Builds without using cached layers. |
+| `docker compose pull` | Downloads the latest images for services that use `image`. |
+| `docker compose push` | Pushes built images to a registry. |
+
+---
+
+## 8. Validating and Viewing the Config
+
+| Command | What it does |
+|---|---|
+| `docker compose config` | Checks your YAML for errors and prints the final merged config (variables filled in). |
+| `docker compose config -q` | Only checks, prints nothing if the file is valid. |
+| `docker compose config --services` | Lists service names. |
+
+Run `docker compose config` first whenever something fails to start. Most errors are indentation or typos.
+
+---
+
+## 9. Using a Different File or Project Name
+
+| Command | What it does |
+|---|---|
+| `docker compose -f mycompose.yaml up -d` | Uses a file with a different name or path. |
+| `docker compose -f compose.yaml -f compose.prod.yaml up -d` | Merges two files (the second overrides the first). Useful for dev vs prod. |
+| `docker compose -p myproject up -d` | Sets the project name. By default it is the folder name, and it is used as the prefix for container, network and volume names. |
+
+---
+
+## 10. Environment Variables
+
+**Method 1: directly in the file**
+
+```yaml
+environment:
+  MYSQL_ROOT_PASSWORD: mypass
+```
+
+**Method 2: a `.env` file next to `compose.yaml`** (Compose reads it automatically for `${VAR}` substitution)
+
+`.env`
+```text
+DB_PASSWORD=mypass
+WEB_PORT=7770
+```
+
+`compose.yaml`
+```yaml
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+  web:
+    image: nginx
+    ports:
+      - "${WEB_PORT}:80"
+```
+
+**Method 3: pass a whole file into the container**
+
+```yaml
+env_file:
+  - ./app.env
+```
+
+Do not commit real passwords to Git. Add `.env` to `.gitignore`.
+
+---
+
+## 11. Volumes in Compose
+
+```yaml
+services:
+  db:
+    image: mysql:8
+    volumes:
+      - dbdata:/var/lib/mysql      # named volume (managed by Docker)
+      - ./init:/docker-entrypoint-initdb.d   # bind mount (host folder)
+
+volumes:
+  dbdata:
+```
+
+- `name:/path` = named volume (declare it under top-level `volumes`).
+- `./folder:/path` = bind mount of a host folder.
+- `docker compose down` keeps named volumes. `docker compose down -v` deletes them.
+
+---
+
+## 12. Networks in Compose
+
+- By default Compose creates **one network** for the project, and all services join it. Services reach each other by **service name** (for example `db`).
+- Use custom networks to separate groups of services:
+
+```yaml
+services:
+  web:
+    image: nginx
+    networks: [frontend, backend]
+  api:
+    image: myapi
+    networks: [backend]
+  db:
+    image: mysql:8
+    networks: [backend]
+
+networks:
+  frontend:
+  backend:
+```
+
+Here `db` cannot be reached from `frontend`-only containers.
+
+---
+
+## 13. depends_on and Health Checks
+
+`depends_on` controls **start order**, but by default it only waits until the other container has **started**, not until it is **ready**.
+
+To wait until the database is really ready, add a health check:
+
+```yaml
+services:
+  db:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: mypass
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-pmypass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    image: myapp
+    depends_on:
+      db:
+        condition: service_healthy
+```
+
+---
+
+## 14. Restart Policies
+
+```yaml
+restart: unless-stopped
+```
+
+| Value | Meaning |
+|---|---|
+| `no` | Never restart (default). |
+| `always` | Always restart, including after Docker daemon restarts. |
+| `on-failure` | Restart only if the container exits with an error. |
+| `unless-stopped` | Like `always`, but not if you stopped it manually. |
+
+---
+
+## 15. Typical Workflow
+
+```bash
+# 1. Write compose.yaml, then check it
+docker compose config
+
+# 2. Start everything in the background
+docker compose up -d
+
+# 3. Check status and logs
+docker compose ps
+docker compose logs -f
+
+# 4. Get inside a service if needed
+docker compose exec web bash
+
+# 5. After changing the file or code
+docker compose up -d --build
+
+# 6. Stop and clean up
+docker compose down
+```
+
+---
+
+## Quick Revision Cheat Sheet
+
+```text
+Start         docker compose up -d
+Stop+remove   docker compose down        (add -v to delete volumes)
+Stop only     docker compose stop
+Status        docker compose ps
+Logs          docker compose logs -f <service>
+Shell         docker compose exec <service> bash
+One-off run   docker compose run --rm <service> <cmd>
+Build         docker compose build  /  up -d --build
+Pull          docker compose pull
+Check file    docker compose config
+Other file    docker compose -f file.yaml up -d
+Scale         docker compose up -d --scale web=3
+```
+
+### Docker CLI vs Compose (why Compose is easier)
+
+| Without Compose | With Compose |
+|---|---|
+| `docker network create appnet` | defined once under `networks` |
+| `docker volume create dbdata` | defined once under `volumes` |
+| `docker container run -d --name mydb --network appnet -v dbdata:/var/lib/mysql -e MYSQL_ROOT_PASSWORD=mypass mysql:8` | the `db` service |
+| `docker container run -d --name myweb --network appnet -p 7770:80 nginx` | the `web` service |
+| Stop and remove everything one by one | `docker compose down` |
